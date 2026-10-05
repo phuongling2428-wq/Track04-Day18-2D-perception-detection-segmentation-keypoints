@@ -1,0 +1,85 @@
+{
+  "progress": {
+    "box_iou": "ok",
+    "nms": "ok",
+    "batched_nms": "ok",
+    "mask_iou": "ok",
+    "polygon_to_mask": "ok",
+    "mask_to_yolo_seg": "ok",
+    "autolabel": "ok",
+    "oks": "ok",
+    "joint_angle": "ok",
+    "FLIP_IDX": "ok",
+    "average_precision": "ok"
+  },
+  "latency": [
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.25",
+      "preprocess (ms)": 1.79,
+      "inference (ms)": 9.94,
+      "postprocess (ms)": 1.33,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.001",
+      "preprocess (ms)": 1.67,
+      "inference (ms)": 8.93,
+      "postprocess (ms)": 1.34,
+      "số box": 203
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.25",
+      "preprocess (ms)": 1.76,
+      "inference (ms)": 9.69,
+      "postprocess (ms)": 0.44,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.001",
+      "preprocess (ms)": 1.74,
+      "inference (ms)": 9.6,
+      "postprocess (ms)": 0.43,
+      "số box": 204
+    }
+  ],
+  "result_4b": {
+    "flip_idx": "giải phẫu",
+    "epochs": 40,
+    "imgsz": 640,
+    "Box mAP50-95": 0.9303488492063492,
+    "Pose mAP50": 0.995,
+    "Pose mAP50-95": 0.4573462529843696,
+    "train (phút)": 4.4
+  },
+  "result_4c": [
+    {
+      "Model": "flip_idx giải phẫu",
+      "Pose mAP50-95 — val gốc": 0.4573462529843696,
+      "Pose mAP50-95 — val lật gương": 0.43884777970456634
+    },
+    {
+      "Model": "flip_idx đồng nhất",
+      "Pose mAP50-95 — val gốc": 0.4169217121481716,
+      "Pose mAP50-95 — val lật gương": 0.29772304416546624
+    }
+  ],
+  "answers": {
+    "Q1": "(a) bus.jpg sau letterbox về 640×480 cho (1, 84, 6300) dự đoán thô, ít hơn 8400 \nvì lưới feature co lại theo chiều cao 480: stride 8 → 80×60, stride 16 → 40×30, \nstride 32 → 20×15. Tổng = 4800 + 1200 + 300 = 6300. Số dự đoán phụ thuộc kích \nthước ảnh đầu vào, không phải hằng số.\n\n(b) Nhãn gốc ở quy ước xywh (góc trên-trái + kích thước). Code đọc nhầm thành \nxyxy hoặc cxcywh, khiến tâm bị dịch nửa kích thước → mọi box lệch sang phải và \nxuống dưới đúng nửa w, nửa h.",
+    "Q2": "Cột thay đổi nhiều nhất giữa hai head là postprocess: one-to-many + NMS \ntốn ~1.33 ms, one-to-one NMS-free chỉ ~0.44 ms — chậm gấp 3 lần, và mức \nchênh này giữ nguyên ở cả conf 0.25 lẫn conf 0.001. Preprocess và inference \ngần như bằng nhau vì cùng backbone và cùng input.\n\nỞ conf thấp (0.001), one-to-many sinh rất nhiều box gốc trước NMS, nên \nNMS phải so hàng triệu cặp IoU → postprocess là nút cổ chai. One-to-one \nluôn ra số box cố định (~200 ở conf thấp) → postprocess gần như không đổi. \nVì vậy lợi ích của NMS-free rõ hơn khi conf thấp, cảnh đông (nhiều box \nchồng nhau), và trên CPU/NPU — nơi NMS chạy chậm hơn nhiều so với GPU T4.",
+    "Q3": "(a) IoU = 0.75 > 0.7 → NMS loại box điểm thấp hơn, chỉ giữ 1 trong 2 người \n→ đếm thiếu người. Giảm ngưỡng (ví dụ 0.5) → giữ cả hai nhưng dễ giữ \nduplicate của cùng một người (đếm thừa). Tăng ngưỡng (0.9) → giữ nhiều \nbox, cũng đếm thừa. Đánh đổi: ngưỡng thấp = ít bỏ sót người nhưng nhiều \nbox trùng; ngưỡng cao = sạch box nhưng dễ mất người đứng sát nhau.\n\n(b) YOLO26 vẫn train thêm head one-to-many vì head này cho tín hiệu học \ndày hơn — mỗi object được nhiều vị trí lưới giám sát, giúp backbone học \nfeature tốt hơn. Head one-to-one chỉ phục vụ suy luận nhanh, không cần \nNMS, nhưng nếu chỉ train one-to-one thì chất lượng feature thấp hơn. \nTrain cả hai = vừa học tốt, vừa suy luận nhanh.",
+    "Q4": "(a) Đếm vùng liên thông cho 8 vùng thay vì 4 người vì hai lý do:\n- Đếm THỪA: 5 vùng có diện tích cực nhỏ (17, 8, 4, 4, 3 pixel) là nhiễu \n  — model gán nhầm vài pixel rời rạc thành class person. Thực tế chỉ có 3 \n  vùng lớn (106186, 20307, 1241 px).\n- Đếm THIẾU: chỉ có 3 vùng lớn thay vì 4 → 1 người bị gộp vào vùng khác \n  hoặc bị che khuất không được gán class person. Đây là hạn chế cố hữu của \n  semantic: pixel cùng class chưa cho biết đó là người nào.\n\nPanoptic segmentation giải quyết bằng cách kết hợp semantic + instance: \nmỗi \"thing\" (người, xe) có instance ID riêng để tách từng đối tượng, còn \n\"stuff\" (trời, đường) chỉ cần class chung. Nhờ vậy vừa biết class từng \npixel, vừa đếm đúng số người.\n\n(b) Bản đồ semantic gán box xe buýt thành class 'train' (63% pixel). Lý do: \nCityscapes train trên đường phố châu Âu và KHÔNG có class 'bus' — chỉ có \n'car', 'truck', 'train'. Hình dáng xe buýt dài, to, nhiều cửa sổ giống tàu \nđiện → model buộc phải chọn class gần nhất và chọn 'train'. Đây là hạn chế \ncủa model có sẵn trên domain khác, không phải lỗi code.",
+    "Q5": "(a) YOLO26n-seg tạo mask bằng 32 prototype dùng chung (mask coefficients × \nprototypes), còn Mask R-CNN dự đoán mask 28×28 cho từng RoI riêng. \n\n- Object LỚN: Mask R-CNN bị giới hạn bởi độ phân giải 28×28 → khi upsample \n  lên box lớn, biên bị mượt quá mức, mất chi tiết (ngón tay, mép áo). \n  YOLO26-seg với prototype độ phân giải cao hơn (thường 160×160) cho biên \n  sắc nét hơn trên object lớn.\n- Object NHỎ: Mask R-CNN 28×28 đủ chi tiết cho box nhỏ → biên tốt. YOLO26-seg \n  có thể bị giới hạn bởi prototype dùng chung, không đủ linh hoạt cho từng \n  object nhỏ.\n\n(b) Hungarian matching tối ưu TỔNG IoU trên toàn bộ cặp, đảm bảo ghép 1-1 \nkhông trùng. Nếu thay bằng \"mỗi mask YOLO lấy mask Mask R-CNN có IoU cao \nnhất\" (greedy), có thể sai ở chỗ: hai mask YOLO khác nhau cùng chọn chung \nmột mask Mask R-CNN (vì cả hai đều thấy nó có IoU cao nhất) → một mask \nMask R-CNN bị ghép đôi, mask còn lại không có cặp. Hungarian tránh được \nđiều này nhờ ràng buộc 1-1.",
+    "Q6": "(a) Điểm A ở tâm box → SAM hiểu là \"tách toàn bộ người\" → mask gần khớp \ntoàn thân (IoU ~0.99). Điểm B ở 80% chiều cao (vùng bụng/quần) → SAM có \nthể chỉ tách phần áo/quần hoặc mảnh nhỏ tại điểm đó, không phải cả người \n→ IoU thấp (~0.00–0.5). Khi gán nhãn tự động, prompt bằng BOX an toàn hơn \nvì box đã bao trọn đối tượng, SAM biết phải tách cả object; còn điểm chỉ \ncho biết \"vùng chứa điểm này\", dễ tách nhầm mảnh nhỏ.\n\n(b) Dùng SAM trực tiếp khi: ảnh ít, cần chất lượng mask cao, không quan tâm \ntốc độ (SAM 2.1-tiny ~74MB, chạy chậm trên CPU). Chỉ dùng SAM để tạo nhãn \nrồi train YOLO26-seg nhỏ khi: cần triển khai realtime/edge device, có \nnhiều ảnh (SAM quá chậm để chạy từng ảnh), hoặc cần model nhẹ <10MB cho \ncamera công nghiệp.",
+    "Q7": "Khi KP_THR = -100, các keypoint chân (knee 13-14, ankle 15-16) vẫn được vẽ \ndù logit của chúng âm (-3.47 đến -0.97) và conf YOLO ~0.001. Vì ảnh zidane \nchỉ chụp từ đầu đến đùi, đầu gối và mắt cá nằm NGOÀI khung — model không có \ntín hiệu thực, nhưng heatmap vẫn có một đỉnh cục bộ tại vị trí nào đó.\n\nCách argmax hoạt động: mỗi keypoint có 1 heatmap 2D, argmax luôn trả về \nmột tọa độ duy nhất (kể cả khi heatmap chỉ là nhiễu). Logit tại argmax \nchính là \"điểm tin cậy\" — nếu logit âm/âm lớn, argmax rơi vào vùng không \ncó tín hiệu, tọa độ vô nghĩa. Vì vậy cần đi kèm confidence: một keypoint \nchỉ hữu ích khi vừa có tọa độ, vừa có đủ tin cậy (logit > ngưỡng cho R-CNN, \nconf > 0.5 cho YOLO). Ngưỡng hiển thị KP_THR chỉ là bộ lọc sau, không thay \nđổi bản chất argmax.",
+    "Q8": "Từ đồ thị bên trái: người 40×80 rơi xuống dưới OKS 0.5 ở sai số khoảng \n4–5 pixel; người 100×200 ở khoảng 8–10 pixel; người 250×500 ở khoảng \n15–20 pixel. Người càng nhỏ càng bị phạt nặng vì cùng sai số tuyệt đối, \nsai số tương đối so với kích thước lớn hơn.\n\nSigma của mắt (0.025) nhỏ hơn hông (0.107) khoảng 4 lần vì mắt người \nít biến động giữa các lần gán nhãn (mọi người đặt mắt ở cùng vị trí \ntương đối), còn hông biến động nhiều hơn (do tư thế, quần áo, góc chụp). \nSigma nhỏ → k nhỏ → mẫu số nhỏ → cùng sai số d bị phạt nặng hơn. Kết quả: \nlệch 8 px, mắt chỉ còn 0.53 trong khi hông còn 0.97.\n\nVới camera cổng gắn trên cao, mỗi người chỉ cao ~80 pixel, sai số 4–5 px \nđã khiến OKS < 0.5 → bất kỳ rung lắc nhỏ nào cũng làm OKS sụt mạnh. Điều \nnày có nghĩa: OKS không phù hợp để đánh giá keypoint trên người nhỏ ở xa; \ncần resize/crop vùng người trước khi chấm, hoặc dùng metric chuẩn hóa \ntheo kích thước người.",
+    "Q9": "(a) Luật \"thân nghiêng > 60°\" BÁO NHẦM khi:\n- Người cúi xuống nhặt đồ, buộc dây giày, hoặc ngồi xổm → thân nghiêng \n  > 60° nhưng không ngã.\n- Người nằm trên ghế dài nghỉ (nếu camera thấy toàn thân).\n- Ảnh bị xoay 90° (như thí nghiệm): người đứng thẳng cũng thành 90°.\n\nLuật BỎ SÓT khi:\n- Người ngã nhưng vẫn ngồi dậy được, thân chưa nghiêng > 60° (ngã kiểu \n  quỳ, ngã chống tay).\n- Người ngã bị che khuất một phần → vai/hông không đủ tin cậy → không \n  kết luận (như người 1, 3, 4 trong ảnh gốc bus.jpg).\n- Camera chụp từ trên cao nhìn xuống → trục thân không còn dọc ảnh.\n\n(b) Ảnh xoay 90° vẫn có đủ 5 người, nhưng model chỉ tìm thấy 3. Vì \nYOLO26n-pose được train trên ảnh người ĐỨNG (trong COCO), khi ảnh bị xoay \ntư thế người trở nên bất thường so với phân phối train → model bỏ sót. \nĐây là hạn chế về tính bất biến với phép quay.\n\n(c) Hệ thống cảnh báo ngã thực tế cần thêm:\n- Phân tích NHIỀU KHUNG HÌNH (video): ngã là sự kiện theo thời gian, \n  không phải trạng thái tĩnh. Cần theo dõi vận tốc hông giảm đột ngột.\n- Hiệu chỉnh hướng camera: xác định trục trọng lực thật, không giả định \n  trục y ảnh.\n- Kết hợp nhiều tín hiệu: góc thân + vận tốc + tư thế đầu so với hông.\n- Loại bỏ false positive: người cúi nhặt đồ có vận tốc khác người ngã.\n- Xử lý che khuất: nếu vai/hông không đủ tin cậy, KHÔNG kết luận thay vì \n  đoán (như code hiện tại đã đúng).\n- Đa camera: 1 góc nhìn không đủ, cần 2-3 góc để xác nhận.",
+    "Q10": "Mọi con hổ ở cả train (210) lẫn val (53) đều quay sang phải, không có \ncon nào quay trái. Vì vậy nếu giữ flip_idx đồng nhất [0..11], mAP trên \ntập val này KHÔNG giảm rõ rệt — vì val cũng toàn hổ quay phải, model \nchỉ cần học phân phối đó là đủ.\n\nTuy nhiên bug flip_idx vẫn ảnh hưởng đến chất lượng học: augmentation \nfliplr=0.5 lật ngang 50% ảnh trong lúc train. Với flip_idx đồng nhất, \nkhi ảnh bị lật, nhãn chân phải bị giữ nguyên là \"right\" dù thực tế \ntrong ảnh gương nó trông như chân trái. Model bị dạy sai cặp left/right \n→ giảm khả năng phân biệt trái/phải.\n\nBug trở thành vấn đề THẬT SỰ khi triển khai: nếu camera chụp được hổ \n(hoặc đối tượng) quay trái — không có trong tập train — model sẽ dự đoán \nnhầm cặp chân trái/phải. Trong bối cảnh camera cổng nhà máy, nếu model \nđược dùng để phân tích tư thế người, bug flip_idx có thể khiến nó nhầm \nchân trái/phải khi công nhân quay hướng khác. Đây chính là lý do cần \ntập val đa dạng hướng quay (như 4C tạo val lật gương).",
+    "Q11": "Từ 6 ảnh val tệ nhất (OKS 0.63–0.66) và biểu đồ sai số theo keypoint, \ntôi thấy hai kiểu lỗi chính:\n\n(1) ĐẢO CHÂN TRÁI/PHẢI: 4/53 ảnh có OKS cao hơn khi đổi nhãn trái↔phải, \nnghĩa là model nhầm cặp left_* và right_*. Trên các ảnh Frame_31, 54, 51, \ncác đoạn vàng nối GT với dự đoán bắt chéo nhau giữa hai chân cùng bên, \nđặc biệt ở vùng chân sau. Nguyên nhân: tập train chỉ có hổ quay phải, \nmodel không học được sự khác biệt thật giữa trái/phải. Cách khắc phục: \n(a) thêm augmentation lật ngang đúng flip_idx (đã có), (b) bổ sung ảnh \nhổ quay trái vào train, (c) fine-tune với val lật gương như mục 4C.\n\n(2) BÀN CHÂN VÀ CHÂN SAU SAI NHIỀU NHẤT: biểu đồ sai số cho thấy:\n- 4 keypoint trục giữa (nose, head, withers, tail_base) sai rất ít \n  (0.028–0.045).\n- 4 keypoint chân sau (hind) sai nhiều (0.125–0.228).\n- right_front_paw có sai số CAO NHẤT (0.265), tiếp theo là \n  left_hind_paw (0.228), left_front_paw (0.212).\nBàn chân (paw) sai nhiều hơn khuỷu/cổ chân (wrist/hock) vì khi hổ đi, \npaw chạm đất và thay đổi vị trí liên tục; đôi khi hai bàn chân chồng \nlên nhau. Cách khắc phục: (a) thêm ảnh chụp từ nhiều góc, (b) \naugmentation xoay nhẹ (degrees=10–15), (c) tăng trọng số loss cho paw, \n(d) chấp nhận hạn chế vì bàn chân là bài toán khó về bản chất.\n\nTóm lại: 0/53 ảnh bỏ sót hổ → model detect tốt. Lỗi chủ yếu ở cấp \nkeypoint: đảo trái/phải (4 ảnh) và sai bàn chân/chân sau (nhiều ảnh).",
+    "Q12": "SIGMA_TIGER = 1/12 cho mọi keypoint là cách Ultralytics chấm mAP cho \ndataset pose không phải 17 keypoint người. Điều này KHÔNG hợp lý khi so \nmũi hổ với gốc đuôi: theo biểu đồ sai số của tôi, mũi/đầu/withers chỉ \nsai 0.028–0.045, còn gốc đuôi (tail_base) sai 0.042 — gần bằng mũi. \nNhưng bàn chân (paw) sai tới 0.21–0.27, gấp 6–9 lần mũi. Dùng sigma \nbằng nhau khiến model không được phạt nặng ở chỗ nó thực sự yếu (paw) \nvà bị phạt quá nặng ở chỗ nó mạnh (mũi) — metric không phản ánh đúng \nchất lượng keypoint.\n\nCách ước lượng sigma cho dataset custom:\n1. Gán nhãn cùng một tập ảnh 2–3 lần bởi 2–3 người khác nhau.\n2. Với mỗi keypoint i, tính độ lệch chuẩn σ_i của tọa độ giữa các lần \n   gán nhãn (sau khi chuẩn hóa theo kích thước object).\n3. σ_i chính là \"độ biến động người gán\" — dùng làm COCO_SIGMAS cho \n   dataset. Keypoint càng khó xác định (paw, chân sau) → σ_i càng lớn \n   → phạt nhẹ hơn. Keypoint rõ (mũi, mắt) → σ_i nhỏ → phạt nặng hơn.\n4. Nếu không có nhiều người gán, có thể xấp xỉ σ_i bằng cách đo phương \n   sai dự đoán của model qua nhiều lần inference với augmentation."
+  },
+  "env": {
+    "device": "cuda",
+    "torch": "2.11.0+cu130",
+    "ultralytics": "8.4.171"
+  }
+}
